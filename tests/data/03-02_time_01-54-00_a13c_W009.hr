@@ -1,0 +1,3 @@
+{"File":{"Name":"03-02T01:54:00_a13c_W009","Program":"BEATmonitor/survey","Version":"v0.01","Firmware":"2v25","Serial":"1393f2f8-8ed91a6d","MAC":"de:13:39:d2:a1:3c","PhysicalID":"W009"}}
+{"Record":{"State":"START_RECORD","DateTime":"Sat Mar 1 2025 21:54:00 GMT-0400","UNIXTimeStamp":"2025-03-02T01:54:00.776Z","BatteryLife":96,"FreeStorage":5718676,"SamplesWritten":0}}
+{"Record":{"State":"STOP_RECORD","DateTime":"Sat Mar 1 2025 22:58:52 GMT-0400","UNIXTimeStamp":"2025-03-02T02:58:52.067Z","BatteryLife":96,"FreeStorage":5677716,"SamplesWritten":0}}
