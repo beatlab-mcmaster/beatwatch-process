@@ -1,17 +1,60 @@
 # beatwatch-process
-Python package for processing data collected with Bangle.js 2 and the BEATwatch application
 
+Python package for processing data collected with Bangle.js 2 and the BEATwatch application
 
 ## Installation
 
-Temporary, since this is a private repository, add your ssh key to the terminal session:
+### Install the beatwatch-process package
+
+#### uv
 
 ```{sh}
-ssh-add ~/.ssh/id_xxxxxxx
+uv add git+ssh://git@github.com/beatlab-mcmaster/beatwatch-process.git
 ```
 
-Then, install (in this case, from a specific branch) with:
+Or, install a branch, e.g.:
 
-```{sh}
-uv add git+ssh://git@github.com/mayabflannery/bangle_process.git@uv-refactor
+```sh
+``
+uv add git+ssh://git@github.com/beatlab-mcmaster/beatwatch-process.git@branch-name
 ```
+
+Upgrade to a new version with:
+
+```sh
+uv add --upgrade git+ssh://git@github.com/beatlab-mcmaster/beatwatch-process.git
+```
+
+Uninstall with:
+
+```sh
+uv remove beatwatch-process
+```
+
+#### pip
+
+```sh
+pip install git+ssh://git@github.com/beatlab-mcmaster/beatwatch-process.git
+```
+
+Or, install a branch, e.g.:
+
+```sh
+pip install git+ssh://git@github.com/beatlab-mcmaster/beatwatch-process.git@branch-name
+```
+
+Upgrade to a new version with:
+
+```sh
+pip install --upgrade git+ssh://git@github.com/beatlab-mcmaster/beatwatch-process.git
+```
+
+Uninstall with:
+
+```sh
+pip uninstall beatwatch-process
+```
+
+## Usage
+
+# TODO:
