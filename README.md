@@ -15,7 +15,6 @@ uv add git+ssh://git@github.com/beatlab-mcmaster/beatwatch-process.git
 Or, install a branch, e.g.:
 
 ```sh
-``
 uv add git+ssh://git@github.com/beatlab-mcmaster/beatwatch-process.git@branch-name
 ```
 
@@ -57,4 +56,4 @@ pip uninstall beatwatch-process
 
 ## Usage
 
-# TODO:
+#TODO
