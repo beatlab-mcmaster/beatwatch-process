@@ -73,7 +73,16 @@ class Parser:
                 if "File" in json_objs[i]:  # File information
                     for k, v in json_objs[i]["File"].items():
                         meta_out[k] = v
-                elif "Record" in json_objs[i]:  # Record information
+                elif "Status" in json_objs[i]:  # Record information (new format)
+                    for k, v in json_objs[i]["Status"].items():
+                        meta_out[f"status_{k}"] = v
+                    if json_objs[i]["Status"]["state"] == "START_RECORD":
+                        for k, v in json_objs[i]["Record"].items():
+                            meta_out[f"start_{k}"] = v
+                    elif json_objs[i]["Status"]["state"] == "STOP_RECORD":
+                        for k, v in json_objs[i]["Record"].items():
+                            meta_out[f"stop_{k}"] = v
+                elif "Record" in json_objs[i]:  # Record information (old format)
                     if json_objs[i]["Record"]["State"] == "START_RECORD":
                         for k, v in json_objs[i]["Record"].items():
                             meta_out[f"start_{k}"] = v
