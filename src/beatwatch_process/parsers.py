@@ -31,6 +31,8 @@ class Parser:
     }
     # Survey data written by BEATwatch
     cols_survey: dict[str, str] = {
+        "number": "int64",
+        "item": "int64",
         "timeStamp": "float64",  # Needed to match format of json object
         "question": "category",
         "input": "category",
