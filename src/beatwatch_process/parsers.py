@@ -53,6 +53,15 @@ class Parser:
         """Create a dataframe from csv rows with provided column names and
         datatypes. By default, 'time_elapsed' is converted to timedelta64."""
         df_out = pd.DataFrame(rows, columns=cols.keys())  # type: ignore
+        n_df_full = len(df_out.index)
+        # Replace empty strings with NaN (common in CSV-like data)
+        df_out = df_out.replace("", pd.NA)
+        # Drop rows that contain missing values (before casting)
+        df_out = df_out.dropna()
+        n_df_na = len(df_out.index)
+        n_dropped = n_df_full - n_df_na
+        if n_dropped > 0:
+            print(f"WARN: Dropped {n_dropped} rows due to missing values")
         df_out = df_out.astype(cols)
         for c in timedelta_cols:
             df_out[c] = pd.to_timedelta(df_out[c], unit="ms")  # type: ignore
