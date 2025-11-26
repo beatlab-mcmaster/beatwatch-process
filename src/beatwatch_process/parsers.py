@@ -3,12 +3,21 @@ import json
 import pytz
 import datetime as dt
 import pandas as pd
-from .filedata import FileData
+from beatwatch_process.filedata import FileData
+from beatwatch_process.utils import log
 
 
 def get_utc_now():
     """Return UTC date and time as ISO format"""
     return dt.datetime.now(tz=dt.UTC).isoformat()
+
+
+def summarise_metadata(data):  # TODO: type
+    record = []
+    for i in data:
+        data[i]["metadata"]["file_name"] = i
+        record.append(data[i]["metadata"])
+    return pd.DataFrame.from_records(record).set_index("file_name")
 
 
 class Parser:
@@ -61,7 +70,7 @@ class Parser:
         n_df_na = len(df_out.index)
         n_dropped = n_df_full - n_df_na
         if n_dropped > 0:
-            print(f"WARN: Dropped {n_dropped} rows due to missing values")
+            log.info(f"WARN: Dropped {n_dropped} rows due to missing values")
         df_out = df_out.astype(cols)
         for c in timedelta_cols:
             df_out[c] = pd.to_timedelta(df_out[c], unit="ms")  # type: ignore
@@ -103,10 +112,10 @@ class Parser:
                 elif "question" in json_objs[i]:  # Survey results
                     rows_survey.append(json_objs[i])
                 else:
-                    print(f"Unknown object: {json_objs[i]}")
+                    log.info(f"Unknown object: {json_objs[i]}")
 
         else:
-            print("No metadata")
+            log.info("No metadata")
 
         # Create survey dataframe
         df_out = pd.DataFrame(rows_survey, columns=self.cols_survey.keys())  # type: ignore
@@ -131,7 +140,7 @@ class Parser:
             ).tz_convert(self.timezone)
         except Exception as e:
             # TODO: better handling here
-            print(f"Could not find valid start timestamp! {e}")
+            log.info(f"Could not find valid start timestamp! {e}")
         return start_timestamp
 
     def _process_absolute_timestamps(
@@ -149,10 +158,10 @@ class Parser:
         for k, v in new_metadata.items():
             if k in original_metadata.keys():
                 pass
-                # print(f"Overwriting {k}: {original_metadata[k]} with {k}: {v}") # May want to log this?
+                # log.info(f"Overwriting {k}: {original_metadata[k]} with {k}: {v}") # May want to log this?
             else:
                 pass
-                # print(f"Adding {k}: {v}")
+                # log.info(f"Adding {k}: {v}")
             original_metadata[k] = v
 
     def parse_file(self, file_name: str, version: float = 0.1) -> FileData:
@@ -166,7 +175,7 @@ class Parser:
 
         try:
             with open(file_name, "r", encoding="utf-8") as f:
-                print(f"Reading {file_name}")
+                log.info(f"Reading {file_name}")
                 for n, raw_line in enumerate(f):
                     line = raw_line.strip()
                     if not line:
@@ -177,7 +186,7 @@ class Parser:
                         try:
                             json_objs[n] = json.loads(line)
                         except json.JSONDecodeError:
-                            print(f"Error reading line {n}")
+                            log.info(f"Error reading line {n}")
                         continue
 
                     # Try to read csv data
@@ -190,7 +199,7 @@ class Parser:
                         row[0] = row[0].strip("A")
                         rows_accel.append(row)
                     elif row[0].startswith("A") and len(row) != len(self.cols_accel):
-                        print(f"Bad accel row: {row}")
+                        log.info(f"Bad accel row: {row}")
 
                     # Check for heart rate sample
                     elif row[0][0].isdigit() and len(row) == len(self.cols_hr):
@@ -198,14 +207,14 @@ class Parser:
                             row[1] = round(int(row[1]) / 10)  # type: ignore
                         rows_hr.append(row)
                     elif row[0][0].isdigit() and len(row) != len(self.cols_hr):
-                        print(f"Bad hr row: {row}")
+                        log.info(f"Bad hr row: {row}")
                     else:
-                        print(f"Unknown data: {row}")
+                        log.info(f"Unknown data: {row}")
 
         except FileNotFoundError:
-            print(f"File {file_name} not found")
+            log.info(f"File {file_name} not found")
         except Exception as e:
-            print(f"Error: {e}")
+            log.info(f"Error: {e}")
 
         # Create heart rate dataframe
         df_hr = self._dataframe_from_list(rows_hr, self.cols_hr)
@@ -276,19 +285,19 @@ def select_period(
         df_max = df_out[time_column_name].max()
 
         if t1 > df_max:
-            print(f"Warning: Start time is out of range: {df_max}")
+            log.info(f"Warning: Start time is out of range: {df_max}")
         elif t2 < df_min:
-            print(f"Warning: End time is out of range: {df_min}")
+            log.info(f"Warning: End time is out of range: {df_min}")
 
         mask = (df_out[time_column_name] >= t1) & (df_out[time_column_name] <= t2)
 
-        print(f"DataFrame {name} -> {sum(mask)} samples")
+        log.info(f"DataFrame {name} -> {sum(mask)} samples")
         return df_out.loc[mask]
 
     # Calculate t1 and t2 depending on arguments
     if time_start and time_end:
         if duration:
-            print(f"Warning: Ignoring duration: {duration}")
+            log.info(f"Warning: Ignoring duration: {duration}")
         t1 = time_start
         t2 = time_end
     elif time_start and duration:
@@ -302,7 +311,7 @@ def select_period(
             "Two of 'time_start', 'time_end', and 'duration' must be provided"
         )
 
-    print(f"Selecting period from {t1} to {t2}")
+    log.info(f"Selecting period from {t1} to {t2}")
 
     if isinstance(data, pd.DataFrame):
         return _select("(single)", data)
