@@ -56,4 +56,16 @@ pip uninstall beatwatch-process
 
 ## Usage
 
-#TODO
+## Troubleshooting
+
+I keep getting an error: "`ModuleNotFoundError: No module named 'beatwatch_process'`"
+when attempting to run scripts. E.g.:
+
+- `uv run beatwatch-process`
+- `uv run python tests/test_output.py`
+
+To reset:
+
+```sh
+uv run --reinstall
+```
