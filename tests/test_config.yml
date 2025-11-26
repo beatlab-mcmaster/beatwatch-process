@@ -1,0 +1,3 @@
+timezone: "America/Toronto"
+dir_data: "tests/data/"
+dir_output: "tests/__test_output/"
