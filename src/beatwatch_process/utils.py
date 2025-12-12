@@ -23,7 +23,9 @@ def load_config(file_name: str) -> dict:
         # Read configuration file
         config_dat = yaml.safe_load(file)
         # Add directory for script's results
-        config_dat["current_script"] = Path(called_by.filename).name.strip(".py")
+        config_dat["current_script"] = Path(called_by.filename).name.strip(
+            ".py"
+        )  # TODO: incorrect strip method
         # sub_folders = ["figures", "tables", "processed"]
         # config_dat["paths_out"] = {}
         # for f in sub_folders:
