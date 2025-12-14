@@ -1,8 +1,10 @@
+import inspect
 import os
 import re
-import yaml
-import inspect
 from pathlib import Path
+
+import yaml
+
 from beatwatch_process import logging_
 
 log = logging_.setup_logging()
@@ -10,8 +12,10 @@ log = logging_.setup_logging()
 
 def get_valid_watch_files(data_directory: str):
     match_data = re.compile(r".*(time).*\.(csv|hr|sv)$", re.IGNORECASE)
-    file_list = [f for f in os.listdir(data_directory) if match_data.fullmatch(f)]
-    log.info(f"Found {len(file_list)} valid files in: {data_directory}")
+    file_list = [
+        f for f in os.listdir(data_directory) if match_data.fullmatch(f)
+    ]
+    log.success(f"Found {len(file_list)} valid files in: {data_directory}")
     return file_list
 
 

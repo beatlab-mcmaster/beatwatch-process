@@ -36,4 +36,5 @@ def upsample(
     df_out["gap"] = df_out["gap"].astype("boolean").ffill()
     if df_out["gap"].any():
         log.info(f"Missing periods (>= {max_gap}) found in data")
+        log.warning(f"Missing periods (>= {max_gap}) found in data")
     return df_out.drop(columns=["diff"])

@@ -1,7 +1,8 @@
-from loguru import logger
-from pathlib import Path
-import sys
 import os
+import sys
+from pathlib import Path
+
+from loguru import logger
 
 
 def setup_logging(level: str = "INFO", logfile: str = "__logs/analysis.log"):
