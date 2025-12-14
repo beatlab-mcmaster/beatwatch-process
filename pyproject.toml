@@ -1,5 +1,5 @@
 [project]
-name = "beatwatch-process"
+name = "beatwatch_process"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -15,8 +15,32 @@ dependencies = [
   "scipy-stubs>=1.16.2.4",
 ]
 
+[tool.uv.sources]
+beatwatch_process = { path = "src/beatwatch_process" }
+
 [project.scripts]
 beatwatch-process = "beatwatch_process:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["beatwatch_process"]
+
+
+[tool.ruff]
+line-length = 80
+[tool.ruff.lint]
+extend-select = ["I"]
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.13"
+extraPaths = ["src"]
+
+
 
 [build-system]
 requires = ["uv_build>=0.9.2,<0.10.0"]
@@ -25,4 +49,5 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.0.1",
+    "ruff>=0.14.9",
 ]
