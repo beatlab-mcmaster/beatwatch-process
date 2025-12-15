@@ -1,5 +1,6 @@
-import pandas as pd
 import holoviews as hv
+import pandas as pd
+
 # from .filedata import FileData
 
 hv.extension("bokeh")

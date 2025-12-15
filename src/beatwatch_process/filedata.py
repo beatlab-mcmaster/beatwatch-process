@@ -1,5 +1,6 @@
+from typing import NotRequired, TypedDict
+
 import pandas as pd
-from typing import TypedDict, NotRequired
 
 
 class FileData(TypedDict):

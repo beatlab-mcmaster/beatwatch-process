@@ -1,4 +1,5 @@
 import pandas as pd
+
 from beatwatch_process.utils import log
 
 
@@ -30,11 +31,10 @@ def upsample(
     df_out = df_out.reindex(time)
 
     # Do not interpolate above max_gap
-    df_out[df_out.select_dtypes(include="number").columns] = df_out.select_dtypes(
-        include="number"
-    ).interpolate(limit=max_gap)
+    df_out[df_out.select_dtypes(include="number").columns] = (
+        df_out.select_dtypes(include="number").interpolate(limit=max_gap)
+    )
     df_out["gap"] = df_out["gap"].astype("boolean").ffill()
     if df_out["gap"].any():
-        log.info(f"Missing periods (>= {max_gap}) found in data")
         log.warning(f"Missing periods (>= {max_gap}) found in data")
     return df_out.drop(columns=["diff"])

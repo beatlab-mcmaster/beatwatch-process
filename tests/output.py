@@ -1,12 +1,13 @@
 import os
-import pandas as pd
-from beatwatch_process.parsers import Parser, select_period
-from beatwatch_process.visualize import vis_single_ts, vis_save
-from beatwatch_process.utils import log, get_valid_watch_files, load_config
-from beatwatch_process.process import upsample
 
 import holoviews as hv
 import hvplot.pandas
+import pandas as pd
+
+from beatwatch_process.parsers import Parser, select_period
+from beatwatch_process.process import upsample
+from beatwatch_process.utils import get_valid_watch_files, load_config, log
+from beatwatch_process.visualize import vis_save, vis_single_ts
 
 log.info("================= Starting analysis =====================")
 
@@ -22,6 +23,13 @@ files = get_valid_watch_files(cfg["dir_data"])
 parser = Parser(cfg["timezone"])
 
 df = parser.parse_file(cfg["dir_data"] + "251009_hr_accel_complete.csv")
+print(df)
+print(df["data_hr"].shape)
+print(df["data_accel"].shape)
+print(df["data_hr"].info())
+print(df["data_accel"].info())
+
+df = parser.parse_file(cfg["dir_data"] + "251009_hr_accel_errors.csv")
 print(df)
 print(df["data_hr"].shape)
 print(df["data_accel"].shape)
