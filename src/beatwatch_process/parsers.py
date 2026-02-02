@@ -32,6 +32,7 @@ class Parser:
         "ppg_filter": "int32",
     }
     # Acceleration data written by BEATwatch
+    # TODO: numpy datatypes
     cols_accel: dict[str, str] = {
         "time_elapsed": "int64",
         "x": "int32",
@@ -66,7 +67,9 @@ class Parser:
         df_out = pd.DataFrame(rows, columns=cols.keys())  # type: ignore
         n_df_full = len(df_out.index)
         # Replace empty strings with NaN (common in CSV-like data)
-        df_out = df_out.replace("", pd.NA)
+        df_out = df_out.replace(
+            ["", "NaN", "nan", "NULL", "null", "None"], pd.NA
+        )
         # Drop rows that contain missing values (before casting)
         df_out = df_out.dropna()
         n_df_na = len(df_out.index)
@@ -91,6 +94,7 @@ class Parser:
         rows_survey = []
 
         if len(json_objs):
+            # print(json_objs)
             for i in json_objs:
                 if "File" in json_objs[i]:  # File information
                     for k, v in json_objs[i]["File"].items():
@@ -225,6 +229,7 @@ class Parser:
                             except ValueError:
                                 row[1] = ""
                                 log.warning("Bad heart rate reading")
+                                # TODO: dont drop rows, add flag/nas
                         rows_hr.append(row)
                     elif row[0][0].isdigit() and len(row) != len(self.cols_hr):
                         log.warning(f"Bad hr row: {row}")
