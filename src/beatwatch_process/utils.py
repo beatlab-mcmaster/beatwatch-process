@@ -1,4 +1,3 @@
-import inspect
 import os
 import re
 from pathlib import Path
@@ -23,32 +22,27 @@ def load_config(file_name: str) -> dict:
     """Load the specified configuration file for script"""
     with open(file_name, "r") as file:
         # Get file name (of caller)
-        called_by = inspect.stack()[1]
+        called_by = Path(__file__).stem
+
         # Read configuration file
         config_dat = yaml.safe_load(file)
-        # Add directory for script's results
-        config_dat["current_script"] = Path(called_by.filename).name.strip(
-            ".py"
-        )  # TODO: incorrect strip method
-        # sub_folders = ["figures", "tables", "processed"]
-        # config_dat["paths_out"] = {}
-        # for f in sub_folders:
-        #     config_dat["paths_out"][f] = Path(
-        #         config_dat["dir_results"], config_dat["current_script"], f
-        #     )
-        log.info(
-            f"Analyses will be run with the settings in '{file_name}':"
-            + f"\n\n{yaml.dump(config_dat)}",
-        )
-        return config_dat
 
+        # Expand raw data paths if needed
+        for k, v in config_dat["paths_in"].items():
+            if "~" in v:
+                config_dat["paths_in"][k] = Path(
+                    config_dat["paths_in"][k]
+                ).expanduser()
+                log.info(f"Input path: {k}: {config_dat['paths_in'][k]}")
 
-def init_directories(config_dat: dict):
-    """Create project directories based on configuration file"""
-    log.info("Initializing directories:")
-    for f, p in config_dat["paths_out"].items():
-        log.info(f" - Creating directory: {p}")
-        os.makedirs(p, exist_ok=True)
+        # Add directories for script's results
+        sub_folders = ["figures", "tables", "__cache", "summary"]
+        config_dat["paths_out"] = {}
+        for f in sub_folders:
+            config_dat["paths_out"][f] = Path("results", called_by, f)
+            log.info(f"Output path: {f}: {config_dat['paths_out'][f]}")
+            os.makedirs(config_dat["paths_out"][f], exist_ok=True)
+    return config_dat
 
 
 def check_existing(file_name: str):
