@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 from pathlib import Path
 
 import yaml
@@ -22,7 +23,7 @@ def load_config(file_name: str) -> dict:
     """Load the specified configuration file for script"""
     with open(file_name, "r") as file:
         # Get file name (of caller)
-        called_by = Path(__file__).stem
+        called_by = Path(sys._getframe(1).f_code.co_filename).stem
 
         # Read configuration file
         config_dat = yaml.safe_load(file)
