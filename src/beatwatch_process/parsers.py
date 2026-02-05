@@ -146,13 +146,16 @@ class Parser:
     def _get_start_timestamp(self, metadata: dict):
         """Return timezone-aware timestamp for start of record"""
         start_timestamp = pd.NaT
-        try:
-            start_timestamp = pd.to_datetime(
-                metadata["start_UNIXTimeStamp"], utc=True
-            ).tz_convert(self.timezone)
-        except Exception as e:
-            # TODO: better handling here
-            log.warning(f"Could not find valid start timestamp! {e}")
+        meta_ts = ""
+        if "start_UNIXTimeStamp" in metadata:
+            meta_ts = metadata["start_UNIXTimeStamp"]
+        elif "status_startTimestamp" in metadata:
+            meta_ts = metadata["status_startTimestamp"]
+        else:
+            log.warning("Could not find valid start timestamp!")
+        start_timestamp = pd.to_datetime(meta_ts, utc=True).tz_convert(
+            self.timezone
+        )
         return start_timestamp
 
     def _process_absolute_timestamps(
