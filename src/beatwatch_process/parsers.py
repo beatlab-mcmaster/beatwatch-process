@@ -99,9 +99,7 @@ class Parser:
                 if "File" in json_objs[i]:  # File information
                     for k, v in json_objs[i]["File"].items():
                         meta_out[k] = v
-                elif (
-                    "Status" in json_objs[i]
-                ):  # Record information (new format)
+                if "Status" in json_objs[i]:  # Record information (new format)
                     for k, v in json_objs[i]["Status"].items():
                         meta_out[f"status_{k}"] = v
                     if json_objs[i]["Status"]["state"] == "START_RECORD":
@@ -110,20 +108,22 @@ class Parser:
                     elif json_objs[i]["Status"]["state"] == "STOP_RECORD":
                         for k, v in json_objs[i]["Record"].items():
                             meta_out[f"stop_{k}"] = v
-                elif (
-                    "Record" in json_objs[i]
-                ):  # Record information (old format)
-                    if json_objs[i]["Record"]["State"] == "START_RECORD":
-                        for k, v in json_objs[i]["Record"].items():
-                            meta_out[f"start_{k}"] = v
-                    elif json_objs[i]["Record"]["State"] == "STOP_RECORD":
-                        for k, v in json_objs[i]["Record"].items():
-                            meta_out[f"stop_{k}"] = v
-                elif "question" in json_objs[i]:  # Survey results
+                if "Record" in json_objs[i]:  # Record information (old format)
+                    if "State" in json_objs[i]["Record"]:
+                        if json_objs[i]["Record"]["State"] == "START_RECORD":
+                            for k, v in json_objs[i]["Record"].items():
+                                meta_out[f"start_{k}"] = v
+                        elif json_objs[i]["Record"]["State"] == "STOP_RECORD":
+                            for k, v in json_objs[i]["Record"].items():
+                                meta_out[f"stop_{k}"] = v
+                if "DeviceInfo" in json_objs[i]:
+                    for k, v in json_objs[i]["DeviceInfo"].items():
+                        meta_out[f"deviceInfo_{k}"] = v
+                if "Settings" in json_objs[i]:
+                    for k, v in json_objs[i]["Settings"].items():
+                        meta_out[f"settings_{k}"] = v
+                if "question" in json_objs[i]:  # Survey results
                     rows_survey.append(json_objs[i])
-                else:
-                    log.warning(f"Unknown object: {json_objs[i]}")
-
         else:
             log.warning("No metadata")
 
