@@ -14,6 +14,11 @@ def upsample(
     """Return dataframe with a new datetimeindex at the specified `upsample_rate`.
     Points between original values (up to `max_gap`) are linearly interpolated.
     A new column is added with identified 'gaps'."""
+    if df.empty:
+        log.warning("Empty dataframe!")
+        # TODO: handle this better
+        return df
+
     df_out = df.copy()
     if not isinstance(df_out.index, pd.DatetimeIndex):
         if "time_absolute" in df_out.columns:
