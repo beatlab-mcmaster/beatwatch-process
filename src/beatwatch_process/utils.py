@@ -30,11 +30,10 @@ def load_config(file_name: str) -> dict:
 
         # Expand raw data paths if needed
         for k, v in config_dat["paths_in"].items():
-            if "~" in v:
-                config_dat["paths_in"][k] = Path(
-                    config_dat["paths_in"][k]
-                ).expanduser()
-                log.info(f"Input path: {k}: {config_dat['paths_in'][k]}")
+            config_dat["paths_in"][k] = Path(
+                config_dat["paths_in"][k]
+            ).expanduser()
+            log.info(f"Input path: {k}: {config_dat['paths_in'][k]}")
 
         # Add directories for script's results
         sub_folders = ["figures", "tables", "__cache", "summary"]
