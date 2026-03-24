@@ -3,6 +3,8 @@ import re
 import sys
 from pathlib import Path
 
+import pandas as pd
+import pytz
 import yaml
 
 from beatwatch_process import logging_
@@ -34,6 +36,31 @@ def load_config(file_name: str) -> dict:
                 config_dat["paths_in"][k]
             ).expanduser()
             log.info(f"Input path: {k}: {config_dat['paths_in'][k]}")
+
+        # Read timezone
+        if "timezone" in config_dat:
+            log.info(f"Using timestamp: {config_dat['timezone']}")
+            config_dat["timezone_pytz"] = pytz.timezone(config_dat["timezone"])
+
+        # Process timestamps
+        if "timestamps" in config_dat:
+            for k, v in config_dat["timestamps"].items():
+                if ("start" in k) or ("end" in k):
+                    config_dat["timestamps"][k] = pd.to_datetime(
+                        config_dat["timestamps"][k]
+                    ).tz_convert(
+                        config_dat["timezone_pytz"]
+                    )  # TODO: handle no timezone
+                    log.info(
+                        f"Created timestamp '{k}': {config_dat['timestamps'][k]}"
+                    )
+                if "length" in k:
+                    config_dat["timestamps"][k] = pd.to_timedelta(
+                        config_dat["timestamps"][k]
+                    )
+                    log.info(
+                        f"Created timedelta '{k}': {config_dat['timestamps'][k]}"
+                    )
 
         # Add directories for script's results
         sub_folders = ["figures", "tables", "__cache", "summary"]

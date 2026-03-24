@@ -1,3 +1,11 @@
 timezone: "America/Toronto"
-dir_data: "tests/data/"
-dir_output: "tests/__test_output/"
+
+paths_in:
+  raw: "~/__data/data/" # Path to raw data
+  osc: "~/__data/osc.log" # Path to OSC event data
+  other: "./other"
+
+timestamps:
+  study_start: "2026-01-01 10:00:00.000Z" # Approximate time the study was started
+  study_end: "2026-01-01 10:20:00.000Z" # Approximate time the study ended
+  trial_length: "55s" # The length of a single trial
