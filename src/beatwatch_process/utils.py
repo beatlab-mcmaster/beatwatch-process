@@ -21,11 +21,16 @@ def get_valid_watch_files(data_directory: str):
     return file_list
 
 
-def load_config(file_name: str) -> dict:
+def load_config(file_name: str, results_dir="default") -> dict:
     """Load the specified configuration file for script"""
     with open(file_name, "r") as file:
-        # Get file name (of caller)
-        called_by = Path(sys._getframe(1).f_code.co_filename).stem
+        # 'default' names the result directory the name of the current script
+        # This does not work well with jupyter notebooks, so optionally, provide results directory name
+        if results_dir == "default":
+            # Get file name (of caller)
+            called_by = Path(sys._getframe(1).f_code.co_filename).stem
+        else:
+            called_by = results_dir
 
         # Read configuration file
         config_dat = yaml.safe_load(file)
