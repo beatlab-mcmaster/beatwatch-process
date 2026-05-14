@@ -25,11 +25,11 @@ def summarise_metadata(data):  # TODO: type
 class Parser:
     # Heart rate data written by BEATwatch
     cols_hr: dict[str, str] = {
-        "time_elapsed": "int64",
-        "heart_rate_bpm": "int16",
+        "time_elapsed": "Int64",
+        "heart_rate_bpm": "Int16",
         "confidence": "UInt8",
-        "ppg_raw": "int32",
-        "ppg_filter": "int32",
+        "ppg_raw": "Int32",
+        "ppg_filter": "Int32",
     }
     # Acceleration data written by BEATwatch
     # TODO: numpy datatypes
@@ -60,7 +60,11 @@ class Parser:
         self.timezone = pytz.timezone(timezone)
 
     def _dataframe_from_list(
-        self, rows: list, cols: dict[str, str], timedelta_cols=["time_elapsed"]
+        self,
+        rows: list,
+        cols: dict[str, str],
+        allow_incomplete_samples: bool,
+        timedelta_cols=["time_elapsed"],
     ) -> pd.DataFrame:
         """Create a dataframe from csv rows with provided column names and
         datatypes. By default, 'time_elapsed' is converted to timedelta64."""
@@ -70,8 +74,9 @@ class Parser:
         df_out = df_out.replace(
             ["", "NaN", "nan", "NULL", "null", "None"], pd.NA
         )
-        # Drop rows that contain missing values (before casting)
-        df_out = df_out.dropna()
+        if not allow_incomplete_samples:
+            # Drop rows that contain missing values (before casting)
+            df_out = df_out.dropna()
         n_df_na = len(df_out.index)
         n_dropped = n_df_full - n_df_na
         if n_dropped > 0:
@@ -183,7 +188,12 @@ class Parser:
                 # log.info(f"Adding {k}: {v}")
             original_metadata[k] = v
 
-    def parse_file(self, file_name: str, version: float = 0.1) -> FileData:
+    def parse_file(
+        self,
+        file_name: str,
+        version: float = 0.1,
+        allow_incomplete_samples: bool = False,
+    ) -> FileData:
         """Read any file created by the BEATwatch application. Data can include
         either, or a mix of, heart rate, acceleration, or survey responses.
         - version: heart rate files written by BEATwatch < 0.2.0 require extra
@@ -191,6 +201,7 @@ class Parser:
         json_objs = {}  # Store metadata and survey responses
         rows_hr = []  # Heart rate samples
         rows_accel = []  # Acceleration samples
+        confidence_errors = 0
 
         try:
             with open(file_name, "r", encoding="utf-8") as f:
@@ -214,8 +225,9 @@ class Parser:
                         continue
 
                     # Check for acceleration sample
-                    if row[0].startswith("A") and len(row) == len(
-                        self.cols_accel
+                    if row[0].startswith("A") and (
+                        len(row) == len(self.cols_accel)
+                        or allow_incomplete_samples
                     ):
                         row[0] = row[0].strip("A")
                         rows_accel.append(row)
@@ -225,7 +237,10 @@ class Parser:
                         log.warning(f"Bad accel row: {row}")
 
                     # Check for heart rate sample
-                    elif row[0][0].isdigit() and len(row) == len(self.cols_hr):
+                    elif row[0][0].isdigit() and (
+                        len(row) == len(self.cols_hr)
+                        or allow_incomplete_samples
+                    ):
                         if version < 0.2:
                             try:
                                 row[1] = round(int(row[1]) / 10)  # type: ignore
@@ -233,6 +248,14 @@ class Parser:
                                 row[1] = ""
                                 log.warning("Bad heart rate reading")
                                 # TODO: dont drop rows, add flag/nas
+                        # Odd issue with one data collection, confidence values randomly dropped for sample
+                        #  Handle when filter value is written to confidence..
+                        if (int(row[2]) > 100) or (int(row[2]) < 0):
+                            confidence_errors += (
+                                1  # Track if these errors occur
+                            )
+                            row[3] = row[2]
+                            row[2] = ""
                         rows_hr.append(row)
                     elif row[0][0].isdigit() and len(row) != len(self.cols_hr):
                         log.warning(f"Bad hr row: {row}")
@@ -246,11 +269,18 @@ class Parser:
         except Exception as e:
             log.exception(f"New error: {e}")
 
+        if confidence_errors > 0:
+            log.warning(f"Confidence values missing: {confidence_errors}")
+
         # Create heart rate dataframe
-        df_hr = self._dataframe_from_list(rows_hr, self.cols_hr)
+        df_hr = self._dataframe_from_list(
+            rows_hr, self.cols_hr, allow_incomplete_samples
+        )
 
         # Create acceleration dataframe
-        df_accel = self._dataframe_from_list(rows_accel, self.cols_accel)
+        df_accel = self._dataframe_from_list(
+            rows_accel, self.cols_accel, allow_incomplete_samples
+        )
 
         # Create metadata, survey dataframe
         meta, df_survey = self._process_json_objs(json_objs)
