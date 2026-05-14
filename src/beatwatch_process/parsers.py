@@ -317,6 +317,14 @@ class Parser:
         either, or a mix of, heart rate, acceleration, or survey responses.
         - version: heart rate files written by BEATwatch < 0.2.0 require extra
         processing step"""
+
+        # For handling missing values
+        def _to_int(val, default=-1) -> int:
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return default
+
         json_objs = {}  # Store metadata and survey responses
         rows_hr = []  # Heart rate samples
         rows_accel = []  # Acceleration samples
@@ -362,18 +370,19 @@ class Parser:
                     ):
                         if version < 0.2:
                             try:
-                                row[1] = round(int(row[1]) / 10)  # type: ignore
+                                row[1] = round(_to_int(row[1]) / 10)  # type: ignore
                             except ValueError:
                                 row[1] = ""
                                 log.warning("Bad heart rate reading")
                                 # TODO: dont drop rows, add flag/nas
                         # Odd issue with one data collection, confidence values randomly dropped for sample
                         #  Handle when filter value is written to confidence..
-                        if (int(row[2]) > 100) or (int(row[2]) < 0):
+                        if (_to_int(row[2]) > 100) or (_to_int(row[2]) < 0):
                             confidence_errors += (
                                 1  # Track if these errors occur
                             )
-                            row[3] = row[2]
+                            if len(row) == 4:
+                                row[3] = row[2]
                             row[2] = ""
                         rows_hr.append(row)
                     elif row[0][0].isdigit() and len(row) != len(self.cols_hr):
