@@ -1,6 +1,7 @@
 import csv
 import datetime as dt
 import json
+import re
 
 import pandas as pd
 import pytz
@@ -174,6 +175,124 @@ class Parser:
         )
 
         return df
+
+    def _get_from_log(self, file_name: str, search_pattern):
+        pattern = re.compile(search_pattern)
+        results = []
+        try:
+            with open(file_name, "r", encoding="utf-8") as f:
+                for n, raw_line in enumerate(f):
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    result = pattern.search(line)
+                    if result:
+                        results.append({"line": n, "match": result})
+        except FileNotFoundError:
+            log.error(f"File {file_name} not found")
+        except ValueError:
+            log.exception("msg")
+        except Exception as e:
+            log.exception(f"New error: {e}")
+
+        return results
+
+    def correct_timestamp(
+        self,
+        log_file: str,
+        file_data: FileData,
+        offset_ms: int = 100,
+    ) -> FileData:
+        """If synchronization was not run before recording, we can try to
+        correct the timestamps of the watch data be searching the info.log
+        file"""
+        offset: pd.Timedelta = pd.to_timedelta(offset_ms, unit="ms")
+        try:
+            device_id = file_data["metadata"]["settings_physicalId"]
+            misaligned_time = pd.to_datetime(
+                file_data["metadata"]["status_startTimestamp"]
+            )
+        except KeyError:
+            device_id = None
+            misaligned_time = None
+            log.error("Could not get file metadata")
+        log.info(
+            f"Getting start record logs for device_id: {device_id} with misaligned start time: {misaligned_time}"
+        )
+        # Filter only logs matching device_id
+        search_pattern = rf"\[(?P<time>.{{23}})\] (?P<log>.*): (?P<device>.{{6}}) \[(?P<id>{device_id})\] (?P<msg>.*)$"
+        records_log = self._get_from_log(log_file, search_pattern)
+        records_parsed = []
+        # Parse log messages
+        for i in range(len(records_log)):
+            time = pd.to_datetime(
+                records_log[i]["match"].group("time")
+            ).tz_localize("UTC")  # Keep UTC
+            msg = records_log[i]["match"].group("msg")
+            status = "NA"
+            if "Writing 'startRecord();'" in msg:
+                records_parsed.append(
+                    {
+                        "server_time": time,
+                        "message": "Start",
+                        "status_time": pd.NaT,
+                        "correct": False,
+                    }
+                )
+            elif "Starting record" in msg:
+                try:
+                    status = records_log[i + 1]["match"].group("msg")
+                except IndexError:
+                    status_time = pd.NaT
+                    log.error("Could not find status message")
+                finally:
+                    if "UNIXTimeStamp" in status:
+                        correct = False
+                        obj = json.loads(status)
+                        status_time = pd.to_datetime(
+                            obj["Record"]["UNIXTimeStamp"]
+                        )
+                        if status_time == misaligned_time:
+                            log.info(
+                                f"Found start command and status at log time: {time}"
+                            )
+                            correct = True
+                        records_parsed.append(
+                            {
+                                "server_time": time,
+                                "message": "Status",
+                                "status_time": status_time,
+                                "correct": correct,
+                            }
+                        )
+        records_df = pd.DataFrame(records_parsed)
+        records_df["diff"] = (
+            records_df["server_time"] - records_df["status_time"]
+        )
+        mean_offset = records_df[
+            records_df["diff"]
+            < pd.to_timedelta(200, unit="ms")  # TODO: Add to configuration file
+        ]["diff"].mean()
+        offset = mean_offset if mean_offset < offset else offset
+        new_start = (
+            records_df[records_df["correct"]]["server_time"].iloc[-1] - offset
+        )
+        log.info(
+            f"Using offset: {offset} to correct. New start timestamp: {new_start}"
+        )
+        correction_from_original = new_start - misaligned_time
+        log.info(f"Total correction: {correction_from_original}")
+        for k, v in file_data.items():
+            if isinstance(v, dict):
+                file_data[k]["time_corrected_from_log"] = True
+                file_data[k]["status_startTimestamp"] = new_start.isoformat()
+            elif isinstance(v, pd.DataFrame):
+                if "time_absolute" in v.columns:
+                    file_data[k] = v.assign(
+                        time_absolute=v["time_absolute"]
+                        + correction_from_original
+                    )
+        return file_data
 
     def update_metadata(
         self, original_metadata: dict, new_metadata: dict
