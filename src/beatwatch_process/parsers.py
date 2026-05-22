@@ -292,6 +292,9 @@ class Parser:
                         time_absolute=v["time_absolute"]
                         + correction_from_original
                     )
+                    file_data[k]["time_absolute"] = file_data[k][
+                        "time_absolute"
+                    ].dt.round("ms")
         return file_data
 
     def update_metadata(
