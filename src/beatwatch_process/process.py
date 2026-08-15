@@ -11,75 +11,115 @@ def upsample(
     output_rate: int = 1,
     time_start: pd.Timestamp | None = None,
 ) -> pd.DataFrame:
-    """Return dataframe with a new datetimeindex at the specified `upsample_rate`.
-    Points between original values (up to `max_gap`) are linearly interpolated.
-    A new column is added with identified 'gaps'."""
+    """Upsample a datetime-indexed dataframe and interpolate short gaps.
+
+    Parameters
+    ----------
+    max_gap:
+        Maximum original sampling gap, in milliseconds, that may be
+        interpolated.
+    upsample_rate:
+        Intermediate grid period, in milliseconds.
+    output_rate:
+        Keep every n-th sample from the intermediate grid.
+    time_start:
+        Start time used to align the output grid.
+    """
     if df.empty:
-        log.warning("Empty dataframe!")
-        # TODO: handle this better
-        return df
+        log.warning("Empty dataframe!")  # TODO: handle this better
+        return df.copy()
 
     df_out = df.copy()
+
     if not isinstance(df_out.index, pd.DatetimeIndex):
-        if "time_absolute" in df_out.columns:
-            df_out.set_index("time_absolute", inplace=True)
-        else:
-            log.error("Could not determine datetimeindex column")
-            raise Exception("Could not determine datetimeindex column")
+        if "time_absolute" not in df_out.columns:
+            raise ValueError("Could not determine datetime index column")
+        df_out.set_index("time_absolute", inplace=True)
 
-    # Create new time index
-    time = pd.date_range(
-        start=df_out.index.min(),
-        end=df_out.index.max(),
-        freq=pd.to_timedelta(upsample_rate, unit="ms"),
-    )
-    # Determine if there are gaps in data; first get difference between samples
-    df_out["diff"] = df_out.index.diff().total_seconds() * 1000
-    # Flag if difference greater than max_gap
-    df_out["gap"] = df_out["diff"] >= max_gap
-    # Apply new index
-    df_out = df_out.reindex(time)
+    if not df_out.index.is_monotonic_increasing:
+        df_out = df_out.sort_index()
 
-    # Do not interpolate above max_gap
-    df_out[df_out.select_dtypes(include="number").columns] = (
-        df_out.select_dtypes(include="number").interpolate(limit=max_gap)
+    if df_out.index.has_duplicates:
+        log.warning("Duplicate timestamps found; keeping the first value")
+        df_out = df_out[~df_out.index.duplicated(keep="first")]
+
+    if upsample_rate <= 0:
+        raise ValueError("upsample_rate must be greater than zero")
+
+    if output_rate <= 0:
+        raise ValueError("output_rate must be greater than zero")
+
+    if max_gap < 0:
+        raise ValueError("max_gap must not be negative")
+
+    period = pd.to_timedelta(upsample_rate, unit="ms")
+    original_index = df_out.index
+
+    # Mark original gaps before reindexing.
+    gap = (
+        original_index.to_series()
+        .diff()
+        .gt(pd.to_timedelta(max_gap, unit="ms"))
     )
-    df_out["gap"] = df_out["gap"].astype("boolean").ffill()
-    if df_out["gap"].any():
+
+    # Include original timestamps so interpolation uses the real samples.
+    grid = pd.date_range(
+        start=original_index.min(),
+        end=original_index.max(),
+        freq=period,
+        tz=original_index.tz,
+    )
+    full_index = grid.union(original_index).sort_values()
+
+    df_out = df_out.reindex(full_index)
+
+    # Interpolate only numeric columns, using elapsed time.
+    numeric_cols = df_out.select_dtypes(include="float64").columns
+
+    df_out[numeric_cols] = df_out[numeric_cols].interpolate(
+        method="time",
+        limit_area="inside",
+    )
+
+    # Propagate the original gap flag onto the expanded index.
+    df_out["_gap"] = gap.reindex(full_index).ffill().fillna(False).astype(bool)
+
+    if df_out["_gap"].any():
         log.warning(
-            f"Missing periods {sum(df_out['gap'])} (>= {max_gap}) found in data"
+            "Missing periods %d (>= %d ms) found in data",
+            int(df_out["_gap"].sum()),
+            max_gap,
         )
 
-    # Filter output timeseries to output_rate
+    # Align to a phase-locked grid if requested.
     if output_rate > 1:
         if time_start is None:
             log.warning(
-                "No start time provided to align grids across devices! "
-                "(device timestamps are out of phase)"
+                "No start time provided to align grids across devices; "
+                "timestamps may be out of phase."
             )
-
         else:
-            if time_start > df_out.index.max():
-                log.error(
-                    "Cannot align output with start time provided "
-                    "(time_start is after end of input data frame)"
+            if time_start > original_index.max():
+                raise ValueError(
+                    "time_start is after the end of the input dataframe"
                 )
-                raise ValueError("Invalid time_start")
 
-            # Construct aligned 1 ms grid starting at time_start
-            full_index = pd.date_range(
+            aligned_index = pd.date_range(
                 start=time_start,
-                end=df_out.index.max(),
-                freq=pd.to_timedelta(upsample_rate, unit="ms"),
+                end=original_index.max(),
+                freq=period,
+                tz=original_index.tz,
             )
 
-            # Reindex: insert NaN rows automatically before original data
-            df_out = df_out.reindex(full_index)
+            # Keep timestamps from the aligned grid only.
+            df_out = df_out.reindex(aligned_index)
 
-            # Now downsample on the aligned grid
-            df_out = df_out.iloc[::output_rate]
+        df_out = df_out.iloc[::output_rate]
 
-    return df_out.drop(columns=["diff"])
+    # Compute elapsed time for new index
+    df_out["time_elapsed"] = df_out.index - df_out.index[0]
+
+    return df_out
 
 
 def time_resolved_stats(data: FileData) -> pd.DataFrame:
